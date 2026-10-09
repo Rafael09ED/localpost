@@ -89,4 +89,35 @@ class GossipSyncTest {
         receive(post)
         assertTrue(store.posts.value.isEmpty())
     }
+
+    @Test fun forwardsToOthersNotSourceAndNeverTwice() {
+        peers.add("D")
+        hello()
+        val post = Post.create(alice, "Forward me")
+        receive(post)
+        assertEquals(setOf("C", "D"), sent.map { it.first }.toSet())
+        assertEquals(2, sent.size)
+        sent.forEach { (_, message) ->
+            val forwarded = Post.fromJson(message.getJSONObject("post"))
+            assertEquals(post.copy(hops = 1, via = "Bob"), forwarded)
+            assertTrue(forwarded.verify())
+        }
+        receive(post)
+        hello("C", "Charlie")
+        receive(post.copy(hops = 1, via = "Bob"), "C")
+        assertEquals(2, sent.size)
+        assertEquals(1, store.posts.value.size)
+    }
+
+    @Test fun relayedPostGainsSecondHopAndImmediateSenderName() {
+        hello(name = "Bob")
+        val post = Post.create(alice, "Alice never met this phone").copy(hops = 1, via = "Alice")
+        receive(post)
+        val received = store.posts.value.single()
+        assertEquals(2, received.hops)
+        assertEquals("Bob", received.via)
+        assertEquals("Alice", received.authorName)
+        assertEquals(post.sig, received.sig)
+        assertTrue(received.verify())
+    }
 }

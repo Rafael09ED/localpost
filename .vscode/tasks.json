@@ -71,6 +71,13 @@
 			"command": "git add app/src/main/java/com/example/localpost/GossipSync.kt app/src/main/java/com/example/localpost/MainActivity.kt app/src/main/java/com/example/localpost/NearbyTransport.kt app/src/test/java/com/example/localpost/GossipSyncTest.kt .vscode/tasks.json; if ($LASTEXITCODE -eq 0) { git commit -m 'M4: initial and live post sync' }",
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Commit milestone 5",
+			"type": "shell",
+			"command": "git add app/src/main/java/com/example/localpost/GossipSync.kt app/src/test/java/com/example/localpost/GossipSyncTest.kt .vscode/tasks.json; if ($LASTEXITCODE -eq 0) { git commit -m 'M5: relay posts across peers' }",
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }

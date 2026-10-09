@@ -67,7 +67,10 @@ class GossipSync(
                         return
                     }
                     val received = post.copy(hops = post.hops + 1, via = name)
-                    if (store.add(received)) log("Received post stored $id via $name hops=${received.hops}")
+                    if (store.add(received)) {
+                        log("Received post stored $id via $name hops=${received.hops}")
+                        endpoints().toList().filter { it != endpointId }.forEach { sendPost(it, received) }
+                    }
                 }
                 else -> log("Unknown message type dropped $endpointId")
             }
