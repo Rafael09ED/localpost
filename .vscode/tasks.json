@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Public Gossip build",
+			"type": "shell",
+			"command": "$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; .\\gradlew.bat assembleDebug --console=plain",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Initialize milestone Git",
+			"type": "shell",
+			"command": "git init; git config user.name; git config user.email; git status --short",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Commit milestone 1",
+			"type": "shell",
+			"command": "git add .gitignore .vscode/tasks.json app build.gradle.kts gradle.properties gradle gradlew gradlew.bat settings.gradle.kts; if ($LASTEXITCODE -eq 0) { git commit -m 'M1: identity and Compose skeleton' }",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
