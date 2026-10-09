@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -25,6 +26,19 @@ class MainActivity : ComponentActivity() {
     private var identity by mutableStateOf<Identity?>(null)
     private lateinit var store: PostStore
     private var error by mutableStateOf<String?>(null)
+    private val debugLog = DebugLog()
+    private lateinit var transport: NearbyTransport
+    private var started = false
+    private var requestingPermissions = false
+    private var permissionMessage by mutableStateOf<String?>(null)
+    private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        requestingPermissions = false
+        debugLog.add("Permission result: $grants")
+        updateNearby()
+        if (!NearbyPermissions.granted(this)) {
+            permissionMessage = "Nearby permissions are required; retry or allow them in app Settings."
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,16 +47,23 @@ class MainActivity : ComponentActivity() {
         val loaded = runCatching { Identity.load(preferences) }
         identity = loaded.getOrNull()
         error = loaded.exceptionOrNull()?.let { "Unable to load identity: ${it.message}" }
-        store = PostStore(File(filesDir, "posts.json")) { error = it }
+        store = PostStore(File(filesDir, "posts.json"), debugLog::add)
+        transport = NearbyTransport(this, debugLog)
         setContent {
             LocalPostTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val posts by store.posts.collectAsStateWithLifecycle()
+                    val peers by transport.peers.collectAsStateWithLifecycle()
+                    val events by debugLog.events.collectAsStateWithLifecycle()
                     val current = identity
                     GossipScreen(
                         identity = current,
                         posts = posts,
                         error = error,
+                        connectedCount = peers.size,
+                        events = events,
+                        permissionMessage = permissionMessage,
+                        onRetryPermissions = { requestPermissions() },
                         onPost = { text ->
                             runCatching {
                                 checkNotNull(identity).let { store.add(Post.create(it, text)) }
@@ -54,6 +75,8 @@ class MainActivity : ComponentActivity() {
                         NameDialog { name ->
                             if (preferences.edit().putString("displayName", name).commit()) {
                                 identity = current.copy(displayName = name)
+                                updateNearby()
+                                requestInitialPermissions()
                             } else {
                                 error = "Could not save name"
                             }
@@ -61,6 +84,54 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        started = true
+        updateNearby()
+        requestInitialPermissions()
+    }
+
+    override fun onStop() {
+        started = false
+        transport.stop()
+        super.onStop()
+    }
+
+    private fun requestInitialPermissions() {
+        if (!identity?.displayName.isNullOrBlank() &&
+            !getSharedPreferences("identity", MODE_PRIVATE).getBoolean("permissionsAsked", false)) {
+            requestPermissions()
+        }
+    }
+
+    private fun requestPermissions() {
+        if (!started || requestingPermissions || identity?.displayName.isNullOrBlank()) return
+        if (NearbyPermissions.granted(this)) {
+            updateNearby()
+            return
+        }
+        getSharedPreferences("identity", MODE_PRIVATE).edit().putBoolean("permissionsAsked", true).apply()
+        requestingPermissions = true
+        val required = NearbyPermissions.required().toTypedArray()
+        debugLog.add("Requesting permissions: ${required.joinToString()}")
+        permissionLauncher.launch(required)
+    }
+
+    private fun updateNearby() {
+        val current = identity ?: return
+        if (!started || current.displayName.isBlank()) return
+        if (!NearbyPermissions.granted(this)) {
+            permissionMessage = "Nearby permissions are required to connect to other phones."
+            return
+        }
+        permissionMessage = null
+        runCatching { transport.start(current) }.onFailure {
+            transport.stop()
+            debugLog.add("Nearby start failed: ${it.message}")
+            error = "Nearby could not start: ${it.message}"
         }
     }
 }
