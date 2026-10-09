@@ -85,7 +85,9 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
     private fun event(session: Int, message: String, action: () -> Unit = {}) {
         handler.post {
             log.add(message)
-            if (running && generation == session) action()
+            if (running && generation == session) {
+                runCatching(action).onFailure { log.add("Callback failed: ${it.message}") }
+            }
         }
     }
 
@@ -117,8 +119,11 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
     private fun request(endpointId: String, session: Int) {
         if (!running || generation != session || endpointId !in found ||
             endpointId in pending || endpointId in peerState.value || endpointId in retries) return
+        val count = attempts[endpointId] ?: 0
+        if (!canRequest(count)) return
+        attempts[endpointId] = count + 1
         pending.add(endpointId)
-        log.add("requestConnection $endpointId attempt ${(attempts[endpointId] ?: 0) + 1}")
+        log.add("requestConnection $endpointId attempt ${count + 1}")
         client.requestConnection(endpointName(), endpointId, lifecycle)
             .addOnSuccessListener { log.add("requestConnection accepted $endpointId") }
             .addOnFailureListener {
@@ -129,22 +134,21 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
     }
 
     private fun retry(endpointId: String, session: Int) {
-        pending.remove(endpointId)
+        if (!pending.remove(endpointId)) return
         val remoteId = found[endpointId] ?: return
         if (!shouldDial(identity.authorId, remoteId) || endpointId in retries || endpointId in peerState.value) return
         val count = attempts[endpointId] ?: 0
-        if (count >= 3) {
+        if (!canRequest(count)) {
             log.add("Retries exhausted $endpointId")
             return
         }
-        attempts[endpointId] = count + 1
         val delay = Random.nextLong(1_000, 3_001)
         val action = Runnable {
             retries.remove(endpointId)
             request(endpointId, session)
         }
         retries[endpointId] = action
-        log.add("Retry ${count + 1}/3 $endpointId in ${delay}ms")
+        log.add("Retry $count/3 $endpointId in ${delay}ms")
         handler.postDelayed(action, delay)
     }
 
@@ -169,8 +173,8 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
 
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
             event(session, "onConnectionResult $endpointId ${result.status.statusCode} ${result.status.statusMessage}") {
-                pending.remove(endpointId)
                 if (result.status.isSuccess) {
+                    pending.remove(endpointId)
                     if (endpointId in peerState.value) return@event
                     cancelRetry(endpointId)
                     attempts.remove(endpointId)
@@ -225,5 +229,6 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
 
     companion object {
         fun shouldDial(localId: String, remoteId: String): Boolean = localId < remoteId
+        fun canRequest(attemptsMade: Int): Boolean = attemptsMade in 0..3
     }
 }

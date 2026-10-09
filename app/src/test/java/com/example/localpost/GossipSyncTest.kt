@@ -120,4 +120,18 @@ class GossipSyncTest {
         assertEquals(post.sig, received.sig)
         assertTrue(received.verify())
     }
+
+    @Test fun maximumStoredHopCountReloadsButCannotOverflowOnReceive() {
+        hello()
+        val post = Post.create(alice, "Boundary").copy(hops = Int.MAX_VALUE - 1)
+        receive(post)
+        val received = store.posts.value.single()
+        assertEquals(Int.MAX_VALUE, received.hops)
+        assertEquals(listOf(received), PostStore(File(directory, "posts.json")).posts.value)
+        val fresh = Post.create(alice, "Overflow").copy(hops = Int.MAX_VALUE)
+        val count = sent.size
+        receive(fresh)
+        assertEquals(1, store.posts.value.size)
+        assertEquals(count, sent.size)
+    }
 }

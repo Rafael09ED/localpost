@@ -37,6 +37,11 @@ android {
 }
 
 dependencies {
+    constraints {
+        implementation(libs.androidx.fragment) {
+            because("Nearby's transitive Fragment 1.1.0 predates Activity Result permission support")
+        }
+    }
     implementation(libs.nearby)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

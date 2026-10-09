@@ -4,6 +4,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NearbyRulesTest {
+    @Test fun initialRequestPlusOnlyThreeRetries() {
+        for (count in 0..3) assertTrue(NearbyTransport.canRequest(count))
+        assertFalse(NearbyTransport.canRequest(4))
+        assertFalse(NearbyTransport.canRequest(5))
+    }
+
     @Test fun tieBreakerHasOneDialer() {
         assertTrue(NearbyTransport.shouldDial("0000000000000001", "0000000000000002"))
         assertFalse(NearbyTransport.shouldDial("0000000000000002", "0000000000000001"))

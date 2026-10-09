@@ -2,9 +2,12 @@ package com.example.localpost
 
 import org.json.JSONObject
 import java.security.KeyFactory
+import java.security.AlgorithmParameters
 import java.security.Signature
 import java.security.interfaces.ECPublicKey
 import java.security.spec.X509EncodedKeySpec
+import java.security.spec.ECGenParameterSpec
+import java.security.spec.ECParameterSpec
 import java.util.Base64
 import java.util.UUID
 
@@ -31,7 +34,11 @@ data class Post(
         val encoded = Base64.getDecoder().decode(pubKey)
         require(Identity.authorIdFor(encoded) == authorId)
         val key = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(encoded)) as ECPublicKey
-        require(key.params.curve.field.fieldSize == 256)
+        val expected = AlgorithmParameters.getInstance("EC").apply {
+            init(ECGenParameterSpec("secp256r1"))
+        }.getParameterSpec(ECParameterSpec::class.java)
+        require(key.params.curve == expected.curve && key.params.generator == expected.generator &&
+            key.params.order == expected.order && key.params.cofactor == expected.cofactor)
         Signature.getInstance("SHA256withECDSA").run {
             initVerify(key)
             update(signedBytes())
@@ -73,7 +80,7 @@ data class Post(
             require(time is Long || time is Int)
             require(hops is Int || hops is Long)
             val hopCount = (hops as Number).toLong()
-            require(hopCount in 0 until Int.MAX_VALUE.toLong())
+            require(hopCount in 0..Int.MAX_VALUE.toLong())
             val via = if (json.isNull("via")) null else string("via")
             require(via == null || via.length <= 24)
             return Post(string("id"), string("authorId"), string("authorName"), string("pubKey"),

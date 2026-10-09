@@ -57,6 +57,7 @@ class GossipSync(
                         return
                     }
                     val post = Post.fromJson(json)
+                    require(post.hops < Int.MAX_VALUE) { "Hop count overflow" }
                     if (!post.verify()) {
                         log("Invalid post dropped $id")
                         return

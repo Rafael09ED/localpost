@@ -78,6 +78,48 @@
 			"command": "git add app/src/main/java/com/example/localpost/GossipSync.kt app/src/test/java/com/example/localpost/GossipSyncTest.kt .vscode/tasks.json; if ($LASTEXITCODE -eq 0) { git commit -m 'M5: relay posts across peers' }",
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Public Gossip final verification",
+			"type": "shell",
+			"command": "$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; .\\gradlew.bat assembleDebug :app:testDebugUnitTest assembleDebugAndroidTest :app:lintDebug --console=plain",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Audit runtime dependencies",
+			"type": "shell",
+			"command": "$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; .\\gradlew.bat :app:dependencies --configuration debugRuntimeClasspath --console=plain | Select-String 'fragment|nearby|org.json|kotlin-stdlib|BUILD SUCCESSFUL|BUILD FAILED'",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Audit debug APK",
+			"type": "shell",
+			"command": "$aapt = 'C:\\Users\\starm\\AppData\\Local\\Android\\Sdk\\build-tools\\36.0.0\\aapt.exe'; $apk = 'app/build/outputs/apk/debug/app-debug.apk'; $badging = & $aapt dump badging $apk; if ($LASTEXITCODE -ne 0) { throw 'APK inspection failed' }; $badging | Select-String 'package:|sdkVersion:|targetSdkVersion:|application-label:'; $permissions = & $aapt dump permissions $apk; $permissions; if ($permissions -match \"name='android.permission.INTERNET'\") { throw 'INTERNET permission present' }; if (-not ($badging -match \"sdkVersion:'32'\")) { throw 'minSdk changed' }; if (-not ($badging -match \"targetSdkVersion:'37'\")) { throw 'targetSdk changed' }; $tree = & $aapt dump xmltree $apk AndroidManifest.xml; if ($tree -match 'E: service') { throw 'Unexpected service' }; Get-ChildItem app/build/test-results/testDebugUnitTest/TEST-*.xml | ForEach-Object { [xml]$result = Get-Content $_.FullName; $result.testsuite | Select-Object name,tests,failures,errors }; Write-Output 'APK SDK/permission/service audit passed'",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Audit debug APK corrected",
+			"type": "shell",
+			"command": "$aapt = 'C:\\Users\\starm\\AppData\\Local\\Android\\Sdk\\build-tools\\36.0.0\\aapt.exe'; $apk = 'app/build/outputs/apk/debug/app-debug.apk'; $badging = & $aapt dump badging $apk; if ($LASTEXITCODE -ne 0) { throw 'APK inspection failed' }; $badging | Select-String 'package:|sdkVersion:|targetSdkVersion:|application-label:'; $permissions = & $aapt dump permissions $apk; $permissions; if ($permissions -match 'android.permission.INTERNET') { throw 'INTERNET permission present' }; if (-not ($badging -match 'sdkVersion:.32.')) { throw 'minSdk changed' }; if (-not ($badging -match 'targetSdkVersion:.37.')) { throw 'targetSdk changed' }; $tree = & $aapt dump xmltree $apk AndroidManifest.xml; if ($tree -match 'E: service') { throw 'Unexpected service' }; Get-ChildItem app/build/test-results/testDebugUnitTest/TEST-*.xml | ForEach-Object { [xml]$result = Get-Content $_.FullName; $result.testsuite | Select-Object name,tests,failures,errors }; Write-Output 'APK SDK/permission/service audit passed'",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Verify dependency scope",
+			"type": "shell",
+			"command": "$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; $dependencies = .\\gradlew.bat :app:dependencies --configuration debugRuntimeClasspath --console=plain; if ($LASTEXITCODE -ne 0) { throw 'Dependency audit failed' }; if ($dependencies -match 'org.json:json') { throw 'Test JSON shipped on runtime classpath' }; $dependencies | Select-String 'play-services-nearby:|androidx.fragment:fragment:1.1.0|androidx.fragment:fragment:1.3.6|BUILD SUCCESSFUL'; Write-Output 'Runtime contains Nearby, compatible Fragment; test JSON excluded'; git diff --check; if ($LASTEXITCODE -ne 0) { throw 'Whitespace errors' }; git status --short",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Commit milestone 6",
+			"type": "shell",
+			"command": "$env:GIT_PAGER = 'cat'; git --no-pager -c core.whitespace=cr-at-eol diff --check; if ($LASTEXITCODE -ne 0) { throw 'Whitespace validation failed' }; git add README.md app/build.gradle.kts gradle/libs.versions.toml app/src/main/AndroidManifest.xml app/src/main/res/values/strings.xml app/src/main/java/com/example/localpost/Post.kt app/src/main/java/com/example/localpost/GossipSync.kt app/src/main/java/com/example/localpost/NearbyTransport.kt app/src/test/java/com/example/localpost/NearbyRulesTest.kt app/src/test/java/com/example/localpost/GossipSyncTest.kt app/src/androidTest/java/com/example/localpost/PersistenceInstrumentedTest.kt .vscode/tasks.json; if ($LASTEXITCODE -ne 0) { throw 'Git staging failed' }; git commit -m 'M6: build and real-device test guide'; if ($LASTEXITCODE -ne 0) { throw 'Git commit failed' }; git --no-pager log -6 --oneline; git status --short",
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }
