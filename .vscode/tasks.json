@@ -22,6 +22,20 @@
 			"command": "git add .gitignore .vscode/tasks.json app build.gradle.kts gradle.properties gradle gradlew gradlew.bat settings.gradle.kts; if ($LASTEXITCODE -eq 0) { git commit -m 'M1: identity and Compose skeleton' }",
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Test signed posts",
+			"type": "shell",
+			"command": "$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; .\\gradlew.bat :app:testDebugUnitTest --tests com.example.localpost.PostTest --console=plain",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Commit milestone 2",
+			"type": "shell",
+			"command": "git add app/build.gradle.kts gradle/libs.versions.toml app/src/main/java/com/example/localpost/MainActivity.kt app/src/main/java/com/example/localpost/GossipScreen.kt app/src/main/java/com/example/localpost/Post.kt app/src/main/java/com/example/localpost/PostStore.kt app/src/test/java/com/example/localpost/PostTest.kt .vscode/tasks.json; if ($LASTEXITCODE -eq 0) { git commit -m 'M2: signed persistent local posts' }",
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }
