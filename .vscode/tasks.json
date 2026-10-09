@@ -57,6 +57,20 @@
 			"command": "git add build.gradle.kts app/build.gradle.kts gradle/libs.versions.toml app/src/main/AndroidManifest.xml app/src/main/java/com/example/localpost/MainActivity.kt app/src/main/java/com/example/localpost/NearbyPermissions.kt app/src/main/java/com/example/localpost/DebugLog.kt app/src/main/java/com/example/localpost/NearbyTransport.kt app/src/test/java/com/example/localpost/NearbyRulesTest.kt .vscode/tasks.json; if ($LASTEXITCODE -eq 0) { git commit -m 'M3: foreground Nearby link and debug log' }",
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Test gossip sync",
+			"type": "shell",
+			"command": "$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; .\\gradlew.bat :app:testDebugUnitTest --tests com.example.localpost.GossipSyncTest --console=plain",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Commit milestone 4",
+			"type": "shell",
+			"command": "git add app/src/main/java/com/example/localpost/GossipSync.kt app/src/main/java/com/example/localpost/MainActivity.kt app/src/main/java/com/example/localpost/NearbyTransport.kt app/src/test/java/com/example/localpost/GossipSyncTest.kt .vscode/tasks.json; if ($LASTEXITCODE -eq 0) { git commit -m 'M4: initial and live post sync' }",
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }

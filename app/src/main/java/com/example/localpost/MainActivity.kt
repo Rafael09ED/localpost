@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
     private var error by mutableStateOf<String?>(null)
     private val debugLog = DebugLog()
     private lateinit var transport: NearbyTransport
+    private lateinit var sync: GossipSync
     private var started = false
     private var requestingPermissions = false
     private var permissionMessage by mutableStateOf<String?>(null)
@@ -49,6 +50,11 @@ class MainActivity : ComponentActivity() {
         error = loaded.exceptionOrNull()?.let { "Unable to load identity: ${it.message}" }
         store = PostStore(File(filesDir, "posts.json"), debugLog::add)
         transport = NearbyTransport(this, debugLog)
+        sync = GossipSync({ checkNotNull(identity) }, store,
+            { transport.peers.value.keys }, transport::send, debugLog::add)
+        transport.onConnected = sync::connected
+        transport.onDisconnected = sync::disconnected
+        transport.onMessage = sync::receive
         setContent {
             LocalPostTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -66,7 +72,7 @@ class MainActivity : ComponentActivity() {
                         onRetryPermissions = { requestPermissions() },
                         onPost = { text ->
                             runCatching {
-                                checkNotNull(identity).let { store.add(Post.create(it, text)) }
+                                sync.create(text)
                             }.onFailure { error = "Could not save post: ${it.message}" }.isSuccess
                         },
                         modifier = Modifier.padding(innerPadding)

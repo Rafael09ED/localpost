@@ -26,6 +26,7 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
     private lateinit var identity: Identity
     private lateinit var lifecycle: ConnectionLifecycleCallback
     var onConnected: ((String) -> Unit)? = null
+    var onDisconnected: ((String) -> Unit)? = null
     var onMessage: ((String, ByteArray) -> Unit)? = null
 
     fun start(localIdentity: Identity) {
@@ -62,6 +63,7 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
         client.stopAdvertising()
         client.stopDiscovery()
         client.stopAllEndpoints()
+        peerState.value.keys.forEach { onDisconnected?.invoke(it) }
         peerState.value = emptyMap()
         log.add("Stopped advertising/discovery; disconnected all endpoints")
     }
@@ -185,6 +187,7 @@ class NearbyTransport(context: Context, private val log: DebugLog) {
         override fun onDisconnected(endpointId: String) {
             event(session, "onDisconnected $endpointId") {
                 peerState.value = peerState.value - endpointId
+                onDisconnected?.invoke(endpointId)
                 pending.remove(endpointId)
                 names.remove(endpointId)
                 attempts.remove(endpointId)
